@@ -4,11 +4,13 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
 export default function PhotoQuizScreen() {
   const router = useRouter();
+  const { isAuthenticated, user, loading } = useAuth();
 
   return (
     <ParallaxScrollView
@@ -48,10 +50,17 @@ export default function PhotoQuizScreen() {
           //   onPress={() => router.back()}
           onPress={() => console.log("Profile")}
         >
-          <Image
-            source={require("@/assets/images/react-logo.png")}
-            style={styles.profileImage}
-          />
+          {isAuthenticated && user?.avatar_url ? (
+            <Image
+              source={{ uri: user.avatar_url }}
+              style={styles.profileImage}
+            />
+          ) : (
+            <Image
+              source={require("@/assets/images/react-logo.png")}
+              style={styles.profileImage}
+            />
+          )}
         </Pressable>
         <Pressable
           style={{

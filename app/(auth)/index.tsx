@@ -1,11 +1,18 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useAuth } from "@/hooks/use-auth";
 import { setColorScheme, useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import { Image, Pressable, StyleSheet, TextInput } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  TextInput,
+} from "react-native";
 
 export default function SignInScreen() {
   const [hiddenPassword, setHiddenPassword] = React.useState(true);
@@ -19,6 +26,8 @@ export default function SignInScreen() {
   );
   const current = useColorScheme();
   const router = useRouter();
+
+  const { signIn, loading, error } = useAuth();
 
   // Hook form
   type FormData = {
@@ -36,9 +45,19 @@ export default function SignInScreen() {
     defaultValues: { username: "", password: "" },
   });
 
-  const onSubmit: SubmitHandler<FormData> = (data) => {
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
     console.log("Sign in data:", data);
-    router.replace("/(tabs)");
+
+    try {
+      // Call signIn; server will set HttpOnly cookies (access_token) on success.
+      const result = await signIn(data.username, data.password);
+      console.log("Sign in result:", result);
+
+      // If sign-in succeeded, navigate to main tabs/home.
+      router.replace("/(tabs)");
+    } catch (error) {
+      console.error("Error signing in:", error);
+    }
   };
 
   const handleDarkModeToggle = () => {
@@ -168,7 +187,9 @@ export default function SignInScreen() {
           style={[styles.button, { backgroundColor: buttonBg }]}
           onPress={handleSubmit(onSubmit)}
         >
-          <ThemedText style={styles.buttonText}>Sign In</ThemedText>
+          <ThemedText style={styles.buttonText}>
+            {loading ? <ActivityIndicator color="#fff" /> : "Sign In"}
+          </ThemedText>
         </Pressable>
         <Pressable
           style={[styles.button, { backgroundColor: "#f84a4aff" }]}
@@ -176,6 +197,7 @@ export default function SignInScreen() {
         >
           <ThemedText style={styles.buttonText}>Google Sign In</ThemedText>
         </Pressable>
+        {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
         <ThemedText
           style={styles.signUpText}
           onPress={() => router.replace("/sign-up")}
