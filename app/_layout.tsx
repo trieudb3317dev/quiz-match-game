@@ -63,6 +63,12 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="photo-quiz/scoreboard"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="not-found"
           options={{
             headerShown: false,

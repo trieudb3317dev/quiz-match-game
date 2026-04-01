@@ -1,9 +1,14 @@
+import { getQuizzes } from "@/api";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
+import useSoloWebsocket from "@/hooks/use-solo-websocket";
+import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 
 type Params = { slug?: string };
@@ -12,6 +17,27 @@ export default function PhotoQuizSlug() {
   const params = useLocalSearchParams<Params>();
   const slug = params?.slug;
   const router = useRouter();
+  const { isAuthenticated, user, loading } = useAuth();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+
+  const expoExtra =
+    (Constants as any).manifest?.extra ||
+    (Constants as any).expoConfig?.extra ||
+    {};
+
+  const {
+    connected,
+    connect,
+    disconnect,
+    addListener,
+    joinSession,
+    backJoinSession,
+  } = useSoloWebsocket({
+    path: `${expoExtra?.NEXT_PUBLIC_WS_BASE_URL}${expoExtra?.NEXT_PUBLIC_WS_PREFIX}/solo-session/game_type/${slug}/resource_type/${slug}/resource_id/${slug}`,
+    autoConnect: false,
+  });
 
   if (!slug) {
     return (
@@ -20,6 +46,39 @@ export default function PhotoQuizSlug() {
       </ThemedView>
     );
   }
+
+  // scrolls
+  const handleScroll = () => {
+    setPage((prevPage) => prevPage + 1);
+  };
+
+  // Make scroll listener to fetch more quizzes when scrolls to bottom
+  const scrollListener = () => {
+    handleScroll();
+  };
+
+  window.addEventListener("scroll", scrollListener);
+
+  useEffect(() => {
+    // Fetch quizzes when scrolls screen or when slug changes
+    const fetchQuizzes = async (page: number, pageSize: number) => {
+      try {
+        const res = await getQuizzes({
+          page,
+          pageSize,
+          query: "",
+          difficulty: slug,
+          sortBy: "created_at",
+          order: "desc",
+        });
+        setQuizzes(res.quizzes);
+      } catch (error) {
+        console.error("Error fetching quizzes:", error);
+      }
+    };
+
+    fetchQuizzes(page, pageSize);
+  }, [slug]);
 
   return (
     <ParallaxScrollView
@@ -61,19 +120,33 @@ export default function PhotoQuizSlug() {
             onPress={() => console.log("Profile")}
             // onPress={() => console.log("Back")}
           >
-            <Image
-              source={require("@/assets/images/react-logo.png")}
-              style={styles.profileImage}
-            />
+            {isAuthenticated && user?.avatar_url ? (
+              <Image
+                source={{ uri: user.avatar_url }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <Image
+                source={require("@/assets/images/react-logo.png")}
+                style={styles.profileImage}
+              />
+            )}
           </Pressable>
           <Pressable
             onPress={() => console.log("Settings")}
             // onPress={() => console.log("Back")}
           >
-            <Image
-              source={require("@/assets/images/react-logo.png")}
-              style={styles.profileImage}
-            />
+            {isAuthenticated && user?.avatar_url ? (
+              <Image
+                source={{ uri: user.avatar_url }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <Image
+                source={require("@/assets/images/react-logo.png")}
+                style={styles.profileImage}
+              />
+            )}
           </Pressable>
         </ThemedView>
         <ThemedView
@@ -81,27 +154,27 @@ export default function PhotoQuizSlug() {
             width: "100%",
             flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             gap: 12,
             height: 800,
             paddingVertical: "40%",
           }}
         >
           {/* List of photos quiz */}
-          {Array.from({ length: 6 }).map((_, index) => (
+          {quizzes.map((quiz) => (
             <Pressable
-              key={index}
+              key={quiz.id}
               style={{
                 width: "100%",
                 flexDirection: "row",
                 justifyContent: "center",
               }}
               onPress={() =>
-                router.push(`/photo-quiz/quiz/${slug}-quiz-${index + 1}` as any)
+                router.push(`/photo-quiz/quiz/${slug}-quiz-${quiz.id}` as any)
               }
             >
               <ThemedText style={styles.photoQuizText}>
-                Photo Quiz {index + 1}: {slug}
+                {quiz.title}: {slug}
               </ThemedText>
             </Pressable>
           ))}
