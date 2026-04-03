@@ -23,6 +23,12 @@ const MAPPING = {
   "chevron.right": "chevron-right",
   "arrow.left": "arrow-back",
   "arrow.right": "arrow-forward",
+  "x.square": "cancel",
+  "moon.circle": "dark-mode",
+  "sun.max.circle": "light-mode",
+  person: "person",
+  plus: "add",
+  "pencil.circle": "edit",
 } as IconMapping;
 
 /**
