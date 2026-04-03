@@ -116,21 +116,8 @@ export default function PhotoQuizSlug() {
             zIndex: 1,
           }}
         >
-          <Pressable
-            onPress={() => console.log("Profile")}
-            // onPress={() => console.log("Back")}
-          >
-            {isAuthenticated && user?.avatar_url ? (
-              <Image
-                source={{ uri: user.avatar_url }}
-                style={styles.profileImage}
-              />
-            ) : (
-              <Image
-                source={require("@/assets/images/react-logo.png")}
-                style={styles.profileImage}
-              />
-            )}
+          <Pressable onPress={() => router.push("/room" as any)}>
+            <IconSymbol size={20} color="#fff" name="person" />
           </Pressable>
           <Pressable
             onPress={() => console.log("Settings")}

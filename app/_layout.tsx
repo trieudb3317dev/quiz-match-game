@@ -69,6 +69,30 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="room/index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="room/create"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="room/join"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="room/waiting"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="not-found"
           options={{
             headerShown: false,

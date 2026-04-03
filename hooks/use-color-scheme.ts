@@ -34,7 +34,7 @@ export function useColorScheme(): Scheme {
     return stored ?? getSystem();
   });
 
-  // Keep the document element class in sync: only add 'dark' class when in dark mode,
+  //O Keep the document element class in sync: only add 'dark' class when in dark mode,
   // otherwise remove it. We don't add a 'light' class.
   useEffect(() => {
     try {
@@ -53,7 +53,6 @@ export function useColorScheme(): Scheme {
       if (stored) return; // user override takes precedence
       setScheme(e.matches ? "dark" : "light");
     };
-
     const mql =
       typeof window !== "undefined" && window.matchMedia
         ? window.matchMedia("(prefers-color-scheme: dark)")

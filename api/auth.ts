@@ -59,10 +59,6 @@ export async function signOut() {
   try {
     const response = await fetch(`${API_URL}/auth/logout`, {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
     if (!response.ok) {
       throw new Error("Sign-out failed");
