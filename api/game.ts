@@ -200,7 +200,7 @@ export async function getSoloSessions({
 }) {
   try {
     const response = await authFetch(
-      `${API_URL}/solo-sessions?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&order_by=${order}&query=${encodeURIComponent(
+      `${API_URL}/sessions/all?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&order_by=${order}&query=${encodeURIComponent(
         query || "",
       )}`,
       {

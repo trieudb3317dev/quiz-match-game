@@ -133,7 +133,7 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <ThemedText type="title" style={styles.modalTitle}>
-              Tham gia phòng!
+              Card Memory Game!
             </ThemedText>
             <ThemedText style={styles.modalBody}>
               Hệ thống chưa hoàn thiện, vui lòng quay lại sau.
