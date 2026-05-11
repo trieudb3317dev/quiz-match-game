@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleSheet } from "react-native";
+import { Image, Modal, Pressable, StyleSheet, View } from "react-native";
 
 import { getGameTypes, signOut } from "@/api";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
@@ -15,6 +15,7 @@ export default function HomeScreen() {
 
   const [gameTypes, setGameTypes] = useState<any[]>([]);
   const [isProfile, setIsProfile] = useState<boolean>(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchGameTypes = async () => {
@@ -81,7 +82,12 @@ export default function HomeScreen() {
               <Pressable onPress={() => router.push("/profile" as any)}>
                 <ThemedText style={styles.buttonText}>Edit Profile</ThemedText>
               </Pressable>
-              <Pressable onPress={async () => await signOut()}>
+              <Pressable
+                onPress={async () => {
+                  await signOut();
+                  router.replace("/(auth)" as any);
+                }}
+              >
                 <ThemedText style={[styles.buttonText, { color: "#fff" }]}>
                   Logout
                 </ThemedText>
@@ -113,7 +119,9 @@ export default function HomeScreen() {
               key={game.id}
               style={styles.button}
               onPress={() =>
-                router.replace(`/${game.key.split("_").join("-")}` as any)
+                game.key === "photo_quiz"
+                  ? router.replace(`/${game.key.split("_").join("-")}` as any)
+                  : setModalVisible(true)
               }
             >
               <ThemedText style={styles.buttonText}>{game.name}</ThemedText>
@@ -121,6 +129,24 @@ export default function HomeScreen() {
           ))}
         </ThemedView>
       </ThemedView>
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ThemedText type="title" style={styles.modalTitle}>
+              Card Memory Game!
+            </ThemedText>
+            <ThemedText style={styles.modalBody}>
+              Hệ thống chưa hoàn thiện, vui lòng quay lại sau.
+            </ThemedText>
+            <Pressable
+              style={[styles.saveButton, styles.modalButton]}
+              onPress={() => setModalVisible(false)}
+            >
+              <ThemedText style={styles.modalButtonText}>Đóng</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ParallaxScrollView>
   );
 }
@@ -212,5 +238,51 @@ const styles = StyleSheet.create({
     textAlign: "left",
     paddingVertical: 8,
     paddingHorizontal: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCard: {
+    width: "82%",
+    backgroundColor: "#121217",
+    padding: 20,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+  },
+  saveButton: {
+    backgroundColor: "#007AFF",
+    color: "#000",
+    padding: 12,
+    borderRadius: 8,
+  },
+  saveText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  modalBody: {
+    color: "#e6e6e6",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  modalButton: {
+    marginTop: 14,
+    width: 120,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "700",
   },
 });

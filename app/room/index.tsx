@@ -1,27 +1,57 @@
 import {
   acceptRoomInvitation,
   checkInvitationStatus,
+  getGameTypeByKey,
   getInvitations,
   getRooms,
   rejectRoomInvitation,
 } from "@/api";
+// game id will be resolved in waiting screen; don't fetch here
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
+import { useRoomSocket } from "@/providers/RoomSocketProvider";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import { useSearchParams } from "expo-router/build/hooks";
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 
 const sampleGroups = ["Group A", "Group B", "Group C", "Group D", "Group E"];
 
+type params = {
+  key: string;
+};
+
 export default function RoomListScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [rooms, setRooms] = React.useState<any[]>([]);
   const [invitations, setInvitations] = React.useState<any[]>([]);
   const [roomHasInvitations, setRoomHasInvitations] = React.useState<{
     [roomId: number]: boolean;
   }>({});
+  // const [gameKey, setGameKey] = React.useState<string>("");
+
+  const params = useSearchParams();
+
+  // read url params (e.g. ?key=photo-quiz) and forward to waiting screen
+
+  const expoExtra =
+    (Constants as any).expoConfig?.extra ||
+    (Constants as any).manifest?.extra ||
+    {};
+
+  // use shared socket provider
+  const {
+    setPath: setWsPath,
+    joinRoom: wsJoinRoom,
+    connect: wsConnect,
+    disconnect: wsDisconnect,
+    send: wsSend,
+  } = useRoomSocket();
 
   React.useEffect(() => {
     const fetchRooms = async () => {
@@ -76,6 +106,20 @@ export default function RoomListScreen() {
     checkInvitations();
   }, [invitations, rooms]);
 
+  // React.useEffect(() => {
+  //   const fetchGameTypeByKey = async (key: string) => {
+  //     try {
+  //       const gameTypeData = await getGameTypeByKey(key);
+  //       console.log("Fetched game type details:", gameTypeData);
+  //       setGameKey(gameTypeData.key);
+  //     } catch (error) {
+  //       console.error(`Error fetching game type with key ${key}:`, error);
+  //     }
+  //   };
+
+  //   fetchGameTypeByKey(gameKey);
+  // }, [gameKey]);
+
   console.log("roomHasInvitations", roomHasInvitations);
 
   const handleAccept = async (inviteId: number) => {
@@ -95,6 +139,67 @@ export default function RoomListScreen() {
       setInvitations((prev) => prev.filter((invite) => invite.id !== inviteId));
     } catch (error) {
       console.error("Error rejecting room invitation:", error);
+    }
+  };
+
+  const handleJoinRoom = async (roomId: number) => {
+    // For demo, navigate to waiting room with roomId as query param
+    if (
+      !roomHasInvitations[roomId] ||
+      rooms.find((room) => room.id === roomId)?.host_id !== user?.id
+    )
+      Alert.alert("Join room failed", "You are not invited to this room.");
+
+    try {
+      const room = rooms.find((r) => r.id === roomId) as any;
+
+      // read key param to forward into waiting screen so waiting can connect WS
+      const rawKey = ((params as any)?.key as string) || "photo-quiz";
+      const gameKey = rawKey; // waiting will convert '-' to '_' as needed
+
+      const gameTypeData = await getGameTypeByKey(gameKey.replace(/-/g, "_"));
+      console.log("gameTypeData: ", gameTypeData);
+
+      const builtWsPath =
+        gameTypeData && room
+          ? `${expoExtra?.NEXT_PUBLIC_WS_BASE_URL || ""}${expoExtra?.NEXT_PUBLIC_WS_PREFIX || "/ws"}/group-session/gameId/${gameTypeData.id}/resource-type/${room.resource_type}/resource-id/${room.resource_id}/room/${room.id}`
+          : "";
+
+      // set path on top-level hook (this will trigger autoConnect)
+      setWsPath(builtWsPath);
+
+      try {
+        if (builtWsPath) {
+          // wsConnect will be triggered by setWsPath + autoConnect, but ensure joinRoom is sent
+          // small delay to allow connection; if wsJoinRoom is ready it will send immediately
+          try {
+            console.log("Attempting WS joinRoom for roomId:", roomId);
+            wsJoinRoom && wsJoinRoom(Number(roomId));
+          } catch (e) {
+            // ignore
+            console.log("e: ", e);
+          }
+        }
+      } catch (e) {
+        console.warn("ws join attempt failed", e);
+      }
+
+      // Attempt API join (safe) then try to join via WS and navigate to waiting
+      // try {
+      //   const isJoined = await checkRoomJoined(roomId);
+      //   if (!isJoined) await joinRoom(roomId);
+      // } catch (e) {
+      //   console.warn("API joinRoom failed (continuing to waiting)", e);
+      // }
+
+      // best-effort WS join using top-level hoo
+
+      router.push(
+        `/room/waiting?roomId=${roomId}&key=${encodeURIComponent(gameKey)}&difficulty=${encodeURIComponent(room.difficulty || "medium")}` as any,
+      );
+      Alert.alert("Joined room", `You have joined room ${roomId}`);
+    } catch (error: any) {
+      console.error("Error joining room:", error);
     }
   };
 
@@ -155,14 +260,18 @@ export default function RoomListScreen() {
 
         <View style={styles.groupsGrid}>
           {rooms
-            .filter((room) => !!roomHasInvitations[room.id])
+            .filter(
+              (room) =>
+                !!roomHasInvitations[room.id] || room.host_id === user?.id,
+            )
             .map((room) => (
               <Pressable
                 key={room.id}
                 style={styles.groupButton}
-                onPress={() =>
-                  router.push(`/room/waiting?roomId=${room.id}` as any)
-                }
+                onPress={() => {
+                  console.log("is join: ", roomHasInvitations[room.id]);
+                  handleJoinRoom(room.id);
+                }}
               >
                 <ThemedText style={styles.groupText}>{room.title}</ThemedText>
               </Pressable>

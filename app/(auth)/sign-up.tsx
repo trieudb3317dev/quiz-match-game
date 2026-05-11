@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useAuth } from "@/hooks/use-auth";
 import { setColorScheme, useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useRouter } from "expo-router";
@@ -19,6 +20,7 @@ export default function SignUpScreen() {
   );
   const current = useColorScheme();
   const router = useRouter();
+  const { signUp, loading, error } = useAuth();
 
   // Hook form
   type FormData = {
@@ -40,7 +42,8 @@ export default function SignUpScreen() {
 
   const onSubmit: SubmitHandler<FormData> = (data) => {
     console.log("Sign up data:", data);
-    router.replace("/(tabs)");
+    signUp(data.username, data.email, data.password);
+    router.replace("/(auth)");
   };
 
   const handleDarkModeToggle = () => {

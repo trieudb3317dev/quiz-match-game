@@ -57,9 +57,45 @@ export async function joinRoom(roomId: number) {
     const response = await authFetch(`${API_URL}/rooms/${roomId}/join`, {
       method: "POST",
     });
-    return response.json();
+
+    // parse JSON safely
+    let data: any = null;
+    try {
+      data = await response.json();
+    } catch (e) {
+      // ignore parse errors
+    }
+
+    if (!response.ok) {
+      const message =
+        data?.detail?.message ||
+        data?.error ||
+        response.statusText ||
+        "Failed to join room";
+      const err: any = new Error(message);
+      err.status = response.status;
+      err.data = data;
+      throw err;
+    }
+
+    return data;
   } catch (error) {
     console.error("Error joining room:", error);
+    throw error;
+  }
+}
+
+export async function checkRoomJoined(roomId: number) {
+  try {
+    const response = await authFetch(
+      `${API_URL}/rooms/${roomId}/check-joined`,
+      {
+        method: "POST",
+      },
+    );
+    return response.json();
+  } catch (error) {
+    console.error("Error checking room joined status:", error);
     throw error;
   }
 }
@@ -69,7 +105,25 @@ export async function leaveRoom(roomId: number) {
     const response = await authFetch(`${API_URL}/rooms/${roomId}/leave`, {
       method: "POST",
     });
-    return response.json();
+
+    let data: any = null;
+    try {
+      data = await response.json();
+    } catch (e) {}
+
+    if (!response.ok) {
+      const message =
+        data?.message ||
+        data?.error ||
+        response.statusText ||
+        "Failed to leave room";
+      const err: any = new Error(message);
+      err.status = response.status;
+      err.data = data;
+      throw err;
+    }
+
+    return data;
   } catch (error) {
     console.error("Error leaving room:", error);
     throw error;
@@ -114,7 +168,8 @@ export async function updateNicknameAndAvatar(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ nickname: nickname, avatarUrl: avatarUrl }),
+      // server expects snake_case field names
+      body: JSON.stringify({ nickname: nickname, avatar_url: avatarUrl }),
     });
     return response.json();
   } catch (error) {

@@ -1,5 +1,6 @@
 // Auth functions
 import Constants from "expo-constants";
+import { authFetch } from "./request";
 
 const BASE_URL =
   Constants.expoConfig?.extra?.NEXT_PUBLIC_API_BASE_URL ||
@@ -161,19 +162,25 @@ export async function resetPassword(token: string, newPassword: string) {
   }
 }
 
-export async function updateProfile(username: string, email: string) {
+export async function updateProfile(profile: Partial<Record<string, any>>) {
   try {
-    const response = await fetch(`${API_URL}/auth/profile`, {
+    const response = await authFetch(`${API_URL}/auth/profile`, {
       method: "PUT",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, email }),
+      body: JSON.stringify(profile),
     });
+
     if (!response.ok) {
-      throw new Error("Failed to update profile");
+      const errBody = await response.text().catch(() => "");
+      const err = new Error(
+        "Failed to update profile: " + (errBody || response.statusText),
+      );
+      (err as any).status = response.status;
+      throw err;
     }
+
     return await response.json();
   } catch (error) {
     console.error("Error updating profile:", error);
