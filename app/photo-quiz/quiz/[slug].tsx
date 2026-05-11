@@ -5,6 +5,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAuth } from "@/hooks/use-auth";
 import useSoloWebsocket from "@/hooks/use-solo-websocket";
+import { useRoomSocket } from "@/providers/RoomSocketProvider";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -133,23 +134,36 @@ export default function PhotoQuizOptionSlug() {
     {};
 
   const { user } = useAuth();
+  const search = useLocalSearchParams();
+  const isGroup = Boolean(
+    (search as any)?.group || (search as any)?.roomSessionId,
+  );
 
   // Connect websocket to listen for quiz updates (e.g., new questions, answer results) and update the UI accordingly
   const wsPath = `${expoExtra?.NEXT_PUBLIC_WS_BASE_URL || ""}${expoExtra?.NEXT_PUBLIC_WS_PREFIX || "/ws"}/solo-session/gameId/${gameTypeId}/resource-type/${resourceType}/resource-id/${Number(resourceId)}`;
 
+  const soloWs = useSoloWebsocket({ path: wsPath, autoConnect: false });
+  const roomSocket = useRoomSocket();
+
   const {
-    connected,
-    lastMessage,
+    connected: soloConnected,
+    lastMessage: soloLastMessage,
     connect,
     disconnect,
     joinSession,
     selectAnswer,
     requestGameResult,
     endSession,
-  } = useSoloWebsocket({
-    path: wsPath,
-    autoConnect: false,
-  });
+  } = soloWs;
+
+  // roomSocket provides the shared group-session socket; use its APIs when in group mode
+  const {
+    connected: roomConnected,
+    lastMessage: roomLastMessage,
+    selectAnswer: roomSelectAnswer,
+    joinSession: roomJoinSession,
+    requestGameResult: roomRequestGameResult,
+  } = roomSocket;
 
   if (!slug) {
     return (
@@ -178,39 +192,46 @@ export default function PhotoQuizOptionSlug() {
 
   // connect websocket when user and slug are ready
   useEffect(() => {
-    if (user && slug && gameTypeId !== 0) {
-      connect();
+    // Only connect the solo websocket when not in group mode.
+    if (!isGroup) {
+      if (user && slug && gameTypeId !== 0) {
+        connect();
+      }
+      return () => {
+        disconnect();
+      };
     }
-    return () => {
-      disconnect();
-    };
-  }, [user, slug, connect, disconnect]);
+    // when in group mode, the shared RoomSocketProvider is responsible for connection lifecycle
+    return;
+  }, [user, slug, gameTypeId, connect, disconnect, isGroup]);
 
   // auto-join session once connected (only once)
   const joinedRef = React.useRef(false);
   useEffect(() => {
-    if (connected && !joinedRef.current) {
-      // request the server to create/join a solo session for this user/quiz
+    if (!isGroup && soloConnected && !joinedRef.current) {
       joinSession();
       joinedRef.current = true;
     }
-  }, [connected, joinSession]);
+    // For group mode we do not auto-join here; the RoomSocketProvider is already joined by waiting.
+  }, [isGroup, soloConnected, joinSession]);
 
   // react to messages from server: navigate to scoreboard on game_result
+  // react to messages from either solo or group socket
   useEffect(() => {
-    if (!lastMessage) return;
+    const last = isGroup ? roomLastMessage : soloLastMessage;
+    if (!last) return;
     try {
-      if (lastMessage.type === "game_result") {
-        const payload = lastMessage;
+      if (last.type === "game_result") {
+        const payload = last;
         console.log("Received game_result, navigating to scoreboard", payload);
-        // encode result as query param (stringified)
         const encoded = encodeURIComponent(JSON.stringify(payload));
         router.push(`/photo-quiz/scoreboard?result=${encoded}` as any);
       }
+      // If server sends question events for group mode, you can handle them here by updating currentQuestion/timeLine/timeStarted
     } catch (e) {
       console.error("failed handling lastMessage", e);
     }
-  }, [lastMessage, router]);
+  }, [isGroup, roomLastMessage, soloLastMessage, router]);
 
   const handleOptionPress = (option: string) => {
     setSelectedOption(option);
@@ -219,7 +240,8 @@ export default function PhotoQuizOptionSlug() {
     try {
       // option is id string or number
       const id = Number(option);
-      const rs = selectAnswer(id, 100 - progressPercent);
+      const fn = isGroup ? roomSelectAnswer : selectAnswer;
+      const rs = fn && fn(id, 100 - progressPercent);
       console.log("selectAnswer response:", rs);
     } catch (e) {
       console.error("selectAnswer failed", e);

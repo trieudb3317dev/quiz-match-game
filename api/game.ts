@@ -183,3 +183,56 @@ export async function createSoloSelectedQuiz(
     throw error;
   }
 }
+
+// Solo sessions listing (paginated, filterable)
+export async function getSoloSessions({
+  page = 1,
+  pageSize = 10,
+  query = "",
+  sortBy = "created_at",
+  order = "desc",
+}: {
+  page?: number;
+  pageSize?: number;
+  query?: string;
+  sortBy?: string;
+  order?: "asc" | "desc";
+}) {
+  try {
+    const response = await authFetch(
+      `${API_URL}/solo-sessions?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&order_by=${order}&query=${encodeURIComponent(
+        query || "",
+      )}`,
+      {
+        method: "GET",
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch solo sessions");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching solo sessions:", error);
+    throw error;
+  }
+}
+
+// Scores for a specific solo session (paginated)
+export async function getSoloSessionScores(
+  sessionId: number,
+  { page = 1, pageSize = 20 }: { page?: number; pageSize?: number } = {},
+) {
+  try {
+    const response = await authFetch(
+      `${API_URL}/solo-sessions/${sessionId}/scores?page=${page}&page_size=${pageSize}`,
+      { method: "GET" },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch solo session scores");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching solo session scores:", error);
+    throw error;
+  }
+}

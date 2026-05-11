@@ -8,8 +8,8 @@ import useSoloWebsocket from "@/hooks/use-solo-websocket";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 
 type Params = { slug?: string };
 
@@ -18,23 +18,31 @@ export default function PhotoQuizSlug() {
   const slug = params?.slug;
   const router = useRouter();
   const { isAuthenticated, user, loading } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [gameTypeKey, setGameTypeKey] = useState<string>("");
 
   const expoExtra =
     (Constants as any).manifest?.extra ||
     (Constants as any).expoConfig?.extra ||
     {};
 
-  const {
-    connected,
-    connect,
-    disconnect,
-    addListener,
-    joinSession,
-    backJoinSession,
-  } = useSoloWebsocket({
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname;
+      console.log("Current Path:", path);
+      // Extract game type key from the path
+      const pathParts = path.split("/");
+      if (pathParts.length > 1) {
+        setGameTypeKey(pathParts[1]);
+      }
+    }
+  }, []);
+  console.log("Game Type Key:", gameTypeKey);
+
+  const {} = useSoloWebsocket({
     path: `${expoExtra?.NEXT_PUBLIC_WS_BASE_URL}${expoExtra?.NEXT_PUBLIC_WS_PREFIX}/solo-session/game_type/${slug}/resource_type/${slug}/resource_id/${slug}`,
     autoConnect: false,
   });
@@ -116,7 +124,10 @@ export default function PhotoQuizSlug() {
             zIndex: 1,
           }}
         >
-          <Pressable onPress={() => router.push("/room" as any)}>
+          <Pressable
+            onPress={() => setModalVisible(true)}
+            // onPress={() => router.push(`/room?key=${gameTypeKey}` as any)}
+          >
             <IconSymbol size={20} color="#fff" name="person" />
           </Pressable>
           <Pressable
@@ -167,6 +178,24 @@ export default function PhotoQuizSlug() {
           ))}
         </ThemedView>
       </ThemedView>
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ThemedText type="title" style={styles.modalTitle}>
+              Tham gia phòng!
+            </ThemedText>
+            <ThemedText style={styles.modalBody}>
+              Hệ thống chưa hoàn thiện, vui lòng quay lại sau.
+            </ThemedText>
+            <Pressable
+              style={[styles.saveButton, styles.modalButton]}
+              onPress={() => setModalVisible(false)}
+            >
+              <ThemedText style={styles.modalButtonText}>Đóng</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ParallaxScrollView>
   );
 }
@@ -188,7 +217,53 @@ const styles = StyleSheet.create({
     height: 20,
     padding: 12,
     backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderRadius: "50%",
+    borderRadius: 999,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCard: {
+    width: "82%",
+    backgroundColor: "#121217",
+    padding: 20,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+  },
+  saveButton: {
+    backgroundColor: "#007AFF",
+    color: "#000",
+    padding: 12,
+    borderRadius: 8,
+  },
+  saveText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  modalBody: {
+    color: "#e6e6e6",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  modalButton: {
+    marginTop: 14,
+    width: 120,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "700",
   },
   photoQuizText: {
     width: "80%",
